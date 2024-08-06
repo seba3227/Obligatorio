@@ -1,0 +1,81 @@
+---
+- name: Configuro servidor base de datos en ubuntu
+  hosts: database
+  vars:
+    ansible_python_interpreter: /usr/bin/python3 #Si no se pone esto, el playbook no toma bien la version de Python.
+  become: true
+  user: sysadmin
+
+  tasks:
+
+    - name: Instalo UFW
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+
+    - name: Defino politicas de tráfico entrantes (Deniego todo)
+      community.general.ufw:
+        policy: deny
+        direction: incoming
+        state: enabled
+
+    - name: Defino politicas de tráfico salientes (Habilito todo)
+      community.general.ufw:
+        policy: allow
+        direction: outgoing
+        state: enabled
+
+    - name: Permitir puerto 22 en ufw (No sirve de nada si ya habilito todo)
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: Servicio UFW levantado y activo
+      ansible.builtin.systemd:
+        name: ufw
+        state: started
+        enabled: true
+
+    # Instalación de base de datos
+    - name: Instalo MariaDB
+      ansible.builtin.apt:
+        name: mariadb-server
+        state: present
+        update_cache: true
+        
+
+    - name: Cambiar la configuración bind-address a 0.0.0.0
+      ansible.builtin.lineinfile:
+        path: /etc/mysql/mariadb.conf.d/50-server.cnf
+        regexp: '^bind-address'
+        line: 'bind-address = 0.0.0.0'
+
+    - name: Reinicio servicio de MariaDB
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted
+        enabled: true
+
+    - name: Habilitar en ufw la conexión a MariaDB
+      community.general.ufw:
+        rule: allow
+        port: '3306'
+        protocol: tcp
+        direction: in
+
+    # Configuración de la base de datos
+    - name: Creo el usuario 'todo' y le configuro la contraseña #El modulo community.mysql.user no funcionó bien.
+      ansible.builtin.command: > 
+        mysql -h localhost -u root -p'tlxadmin' -e "CREATE USER IF NOT EXISTS 'todo'@'%' IDENTIFIED BY 'prueba2024'; ALTER USER 'todo'@'%' IDENTIFIED BY 'prueba2024'; GRANT ALL PRIVILEGES ON *.* TO 'todo'@'%' IDENTIFIED BY 'prueba2024'; FLUSH PRIVILEGES;"
+
+    - name: Importar datos en la base de datos 'todo'
+      community.mysql.mysql_db:
+        login_host: "{{ hostvars[inventory_hostname].ansible_host }}"
+        login_user: todo
+        login_password: prueba2024
+        name: todo
+        state: import
+        target: ./files/todo.sql
+        config_file: /etc/mysql/mariadb.conf.d/50-server.cnf #Especificar que archivo de configuracion tiene que tomar el playbook
+      delegate_to: localhost
+      connection: local
