@@ -19,6 +19,11 @@ cd .\{directorio}\TallerJulio2024
 ```bash
 ansible-playbook -i Inventory/host_vars/servidores.toml database.yml --ask-become-pass
 ```
+## 3- Instalacion de tomcat y aplicacion todo.war
+
+```bash
+ansible-playbook -i Inventory/host_vars/servidores.toml instalacion_todo_app.yml --ask-become-pass
+```
 
 
 
