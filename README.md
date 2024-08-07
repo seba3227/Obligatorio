@@ -1,7 +1,5 @@
 # Instalación de aplicación 'TODO'
 
-'TODO' es una aplicación de dios, porque es omnipotente (?
-
 Se detallará el paso por paso para la correcta instalación de todo el conjunto de aplicacion y base de datos. 
 
 ## 1- Instalar módulo de Python en el controller
